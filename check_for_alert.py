@@ -1,20 +1,30 @@
 import requests
 import re
 #import sethold
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
+import feedparser
 
 future_holds_file = './future_events.json'
 
-alert_regex = re.compile('a')
 
-r = requests.get('http://emails2rss.appspot.com/rss?id=36e69f0b0d17404aa40a7eb032bb6a3c0c1c', headers = {'user-agent': 'jdfoote-app/0.0.1'})
-print(r.content)
+def main():
+    feed = feedparser.parse('http://emails2rss.appspot.com/rss?id=36e69f0b0d17404aa40a7eb032bb6a3c0c1c')
+    for entry in feed.entries:
+        entry_date = get_date(entry.published)
+        if entry_date < datetime.now() - timedelta(days=1):
+            continue
+        else:
+            if re.match('.*Flex Savings Option Alert for Tomorrow', entry.title):
+                to_add = get_settings(entry_date + timedelta(days=1))
+                save_changes(to_add)
+            else:
+                print("No alert for the post '{entry.title}'")
 
 
-def get_date(text):
-# Delete this when regex is fixed
-    return datetime.now()
+
+def get_date(s):
+    return datetime.strptime(s, '%a, %d %b %Y %H:%M:%S %Z')
 
 
 def get_settings(date):
@@ -35,7 +45,7 @@ def get_settings(date):
     else:
         result = [
             {'date': datestring,
-                'start_time' : '05:00:00',
+                'start_time' : '04:30:00',
                 'end_time': '06:00:00',
                 'type': 'prep'},
             {'date': datestring,
@@ -55,23 +65,16 @@ def get_settings(date):
     return result
 
 
-if r.status_code == 200:
-    if re.search(alert_regex, r.text):
-        date = get_date(r.text)
-        holds = get_settings(date)
-        with open(future_holds_file, 'r') as f:
+def save_changes(holds):
+    with open(future_holds_file, 'r') as f:
+        try:
             curr_holds = json.load(f)
-            curr_holds += holds
-        with open(future_holds_file, 'w') as f:
-            json.dump(curr_holds, f)
+        except json.decoder.JSONDecodeError:
+            curr_holds = []
+        curr_holds += holds
+    with open(future_holds_file, 'w') as f:
+        json.dump(curr_holds, f)
 
-#        for hold in holds:
-#            sethold.set_hold(
-#                start_date = hold['date'],
-#                start_time= hold['start_time'],
-#                end_time = hold['end_time'],
-#                hold_type = hold['type'],
-#                token = token
-#                )
-#        print(sethold.get_events(token))
-#
+
+if __name__ == '__main__':
+    main()

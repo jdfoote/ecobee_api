@@ -55,7 +55,7 @@ def set_hold(start_date,
         heatHoldTemp = 700
         coldHoldTemp = 730
     elif hold_type == 'saving':
-        heatHoldTemp = 590
+        heatHoldTemp = 610
         coldHoldTemp = 800
     else:
         raise("hold_type must be one of {prep, saving}")
