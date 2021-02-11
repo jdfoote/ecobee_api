@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import requests
 import re
 #import sethold
@@ -5,7 +7,7 @@ from datetime import datetime, timedelta
 import json
 import feedparser
 
-future_holds_file = './future_events.json'
+future_holds_file = '/home/pi/ecobee_api/future_events.json'
 
 
 def main():
@@ -15,7 +17,7 @@ def main():
         if entry_date < datetime.now() - timedelta(days=1):
             continue
         else:
-            if re.match('.*Flex Savings Option Alert for Tomorrow', entry.title):
+            if re.match('.*Alert.*[tT]omorrow', entry.title):
                 to_add = get_settings(entry_date + timedelta(days=1))
                 save_changes(to_add)
             else:
@@ -40,39 +42,54 @@ def get_settings(date):
                 'type': 'prep'},
             {'date': datestring,
                 'start_time' : '12:00:00',
-                'end_time': '18:00:00',
-                'type': 'saving'}]
+                'end_time': '19:00:00',
+                'type': 'saving'},
+            {'date': datestring, # Resume the regular program at 6
+                'start_time': '18:00:00',
+                'end_time' : '19:00:00',
+                'type': 'resume'}]
     else:
         result = [
             {'date': datestring,
-                'start_time' : '04:30:00',
+                'start_time' : '04:00:00',
                 'end_time': '06:00:00',
                 'type': 'prep'},
             {'date': datestring,
                 'start_time' : '06:00:00',
-                'end_time': '13:00:00',
+                'end_time': '15:00:00', # Hold until 3, so that it doesn't automatically adjust before it's time
                 'type': 'saving'},
+            {'date': datestring, # Resume the regular program at 1
+                'start_time': '13:00:00',
+                'end_time' : '14:00:00',
+                'type': 'resume'},
             {'date': datestring,
                 'start_time' : '17:00:00',
                 'end_time': '18:00:00',
                 'type': 'prep'},
             {'date': datestring,
                 'start_time' : '18:00:00',
-                'end_time': '21:00:00',
+                'end_time': '23:00:00',
                 'type': 'saving'
-            }
+            },
+            {'date': datestring, # Resume the regular program at 9
+                'start_time': '21:00:00',
+                'end_time' : '22:00:00',
+                'type': 'resume'}
         ]
     return result
 
 
 def save_changes(holds):
-    with open(future_holds_file, 'r') as f:
-        try:
+    try:
+        with open(future_holds_file, 'r') as f:
             curr_holds = json.load(f)
-        except json.decoder.JSONDecodeError:
-            curr_holds = []
+    except (json.decoder.JSONDecodeError, FileNotFoundError) as e:
+        curr_holds = []
+    # check if this date has already been added
+    if holds[0]['date'] not in [x['date'] for x in curr_holds]:
         curr_holds += holds
     with open(future_holds_file, 'w') as f:
+        print("Adding some new holds")
         json.dump(curr_holds, f)
 
 

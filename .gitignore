@@ -1,0 +1,4 @@
+ecobee_auth.json
+__pycache__
+*.pyc
+future_events.json

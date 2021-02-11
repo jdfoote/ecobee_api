@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import json
 import requests
 import urllib
@@ -5,8 +7,8 @@ import random
 from datetime import datetime
 
 BASE_URL = 'https://api.ecobee.com/'
-auth_file = './ecobee_auth.json'
-future_holds_file = './future_events.json'
+auth_file = '/home/pi/ecobee_api/ecobee_auth.json'
+future_holds_file = '/home/pi/ecobee_api/future_events.json'
 
 def main():
     activate_holds(future_holds_file)
@@ -26,7 +28,6 @@ def refresh_tokens():
     r.raise_for_status()
     if r.status_code == 200:
         content = r.json()
-        print(content)
         auth['refresh_token'] = content['refresh_token']
         auth['access_token'] = content['access_token']
         #auth['expiry'] = content['
@@ -45,6 +46,31 @@ def get_events(token):
         return r.json()['thermostatList'][0]['events']
 
 
+def make_call(params):
+
+    token = refresh_tokens()
+
+    r = requests.post(BASE_URL + '1/thermostat',
+              params = {'format': 'json'},
+              headers = {"Authorization": f"Bearer {token}"},
+              json = params)
+    return r
+
+def resume_program():
+
+    params = {"selection": {
+		"selectionType":"registered",
+		"selectionMatch":""
+	      },
+	      "functions": [
+		{
+		  "type":"resumeProgram",
+		  "params":{
+		    "resumeAll":false}}]}
+    r = make_call(params)
+    if r.status_doe == 200:
+        print("Resuming regular program")
+    
 
 def set_hold(start_date,
         start_time,
@@ -53,7 +79,7 @@ def set_hold(start_date,
         ):
     if hold_type == 'prep':
         heatHoldTemp = 700
-        coldHoldTemp = 730
+        coldHoldTemp = 720
     elif hold_type == 'saving':
         heatHoldTemp = 610
         coldHoldTemp = 800
@@ -61,7 +87,6 @@ def set_hold(start_date,
         raise("hold_type must be one of {prep, saving}")
 
 
-    token = refresh_tokens()
 
     selection_params = {"selection": {
     "selectionType":"registered",
@@ -77,12 +102,9 @@ def set_hold(start_date,
         "holdType":"dateTime",
         "heatHoldTemp": heatHoldTemp,
         "coolHoldTemp": coldHoldTemp}}]}
-    r = requests.post(BASE_URL + '1/thermostat',
-              params = {'format': 'json'},
-              headers = {"Authorization": f"Bearer {token}"},
-              json = selection_params)
+
+    r = make_call(selection_params)
     if r.status_code == 200:
-        print(r.content)
         print(f"Setting temp range to {heatHoldTemp/10}-{coldHoldTemp/10} degrees, starting at {start_time} on {start_date}")
     else:
         print("could not set temperature successfully")
@@ -95,15 +117,18 @@ def activate_holds(upcoming_holds_file):
         upcoming = json.load(f)
         to_save = []
         for hold in upcoming:
-            print(hold)
             curr_start = datetime.strptime(f"{hold['date']} {hold['start_time']}", "%Y-%m-%d %H:%M:%S")
             curr_end = datetime.strptime(f"{hold['date']} {hold['end_time']}", "%Y-%m-%d %H:%M:%S")
             if curr_start < curr_dt:
                 if curr_end > curr_dt:
-                    set_hold(start_date = hold['date'],
-                            start_time = hold['start_time'],
-                            end_time = hold['end_time'],
-                            hold_type = hold['type'])
+                    print("Running")
+                    if hold['type'] == 'resume':
+                        resume_progam()
+                    else:
+                        set_hold(start_date = hold['date'],
+                                start_time = hold['start_time'],
+                                end_time = hold['end_time'],
+                                hold_type = hold['type'])
                 else:
                     continue
             else:
