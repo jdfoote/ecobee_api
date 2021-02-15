@@ -3,18 +3,19 @@
 import requests
 import re
 #import sethold
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 import feedparser
+import pytz
 
 future_holds_file = '/home/pi/ecobee_api/future_events.json'
 
 
 def main():
-    feed = feedparser.parse('http://emails2rss.appspot.com/rss?id=36e69f0b0d17404aa40a7eb032bb6a3c0c1c')
+    feed = feedparser.parse('https://notifier.in/rss/kbh1nnsaukm97yjdk5if41epxaprmrs6.xml')
     for entry in feed.entries:
         entry_date = get_date(entry.published)
-        if entry_date < datetime.now() - timedelta(days=1):
+        if entry_date < datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=1):
             continue
         else:
             if re.match('.*Alert.*[tT]omorrow', entry.title):
@@ -26,7 +27,9 @@ def main():
 
 
 def get_date(s):
-    return datetime.strptime(s, '%a, %d %b %Y %H:%M:%S %Z')
+    dt = datetime.strptime(s, '%a, %d %b %Y %H:%M:%S %z')
+    return dt.astimezone(pytz.timezone('US/Eastern'))
+
 
 
 def get_settings(date):

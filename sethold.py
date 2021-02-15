@@ -66,9 +66,9 @@ def resume_program():
 		{
 		  "type":"resumeProgram",
 		  "params":{
-		    "resumeAll":false}}]}
+		    "resumeAll":False}}]}
     r = make_call(params)
-    if r.status_doe == 200:
+    if r.status_code == 200:
         print("Resuming regular program")
     
 
@@ -78,7 +78,7 @@ def set_hold(start_date,
         hold_type,
         ):
     if hold_type == 'prep':
-        heatHoldTemp = 700
+        heatHoldTemp = 701
         coldHoldTemp = 720
     elif hold_type == 'saving':
         heatHoldTemp = 610
@@ -123,7 +123,7 @@ def activate_holds(upcoming_holds_file):
                 if curr_end > curr_dt:
                     print("Running")
                     if hold['type'] == 'resume':
-                        resume_progam()
+                        resume_program()
                     else:
                         set_hold(start_date = hold['date'],
                                 start_time = hold['start_time'],
